@@ -1,0 +1,61 @@
+import pandas
+with open("nba_2013.csv", 'r') as csvfile:
+    nba = pandas.read_csv(csvfile)
+    
+# from the nba Data we can see that first column is Player name and 
+# Last two columns are 'season', 'season_end'
+# These three columns are not contribute in prediction.
+# We can drop these columns
+nba.drop(['player', 'season', 'season_end'], axis=1, inplace=True)
+
+# We can see 'pos' and 'bref_team_id' are catagorical values
+# Need to apply Label for these columns
+
+from sklearn.preprocessing import LabelEncoder
+lbl = LabelEncoder()
+nba.pos = lbl.fit_transform(nba.pos)
+nba.bref_team_id = lbl.fit_transform(nba.bref_team_id)
+
+# Find if there are any missing values
+print(nba.isnull().sum())
+
+# From this we can see fg, X3P.,X2P.,efg. and ft are having missing values
+# Filling missing values with Avg value
+nba.fillna(nba.mean(), inplace=True)
+
+# Defining the X and Y for DS
+y = nba.pts
+X = nba.iloc[:,:-1]
+
+# Splitting the DS in train and test set
+from sklearn.cross_validation import train_test_split
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2,random_state=100)
+
+# Creating KNN model
+from sklearn.neighbors import KNeighborsRegressor
+
+best_K = 0
+max_acc = 0
+# Findout for what K value we are getting best accuracy
+for K in range(25):
+    K_value = K+1
+    neigh = KNeighborsRegressor(n_neighbors = K_value, weights='uniform', algorithm='auto')
+    neigh.fit(X_train, y_train) 
+    y_pred = neigh.predict(X_test)
+    if (neigh.score(X_test,y_test)) > max_acc:
+        max_acc = neigh.score(X_test,y_test)
+        best_K = K_value
+        
+
+# Simply print the Y_pred and Y_actual values
+tmp = pandas.DataFrame({'predicted_val':y_pred.tolist() ,'Actual_val':y_test.tolist()})
+print("Printing the predicted and actual values")
+print(tmp.head(20))
+
+# Use the best K value to create a model and predict the value
+neigh = KNeighborsRegressor(n_neighbors = best_K, weights='uniform', algorithm='auto')
+neigh.fit(X_train, y_train) 
+y_pred = neigh.predict(X_test)
+print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+print("Accuracy Score for K={} is {:.6}".format(10,100*neigh.score(X_test,y_test)))
+print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
